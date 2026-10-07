@@ -1,0 +1,50 @@
+
+> ejentic-ai-scraper@0.1.0 dev
+> next dev
+
+▲ Next.js 16.3.3 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://172.20.10.2:3000
+- Environments: .env.local
+✓ Ready in 2.7s
+✓ Running next.config.ts took 79ms
+⚠ Slow filesystem detected. The benchmark took 225ms. If \\?\C:\Users\USER\Desktop\ejentic_prod\.next\dev is a network drive, consider moving it to a local folder.
+See more: https://nextjs.org/docs/app/guides/local-development
+
+○ Compiling /api/health ...
+ GET /api/health 200 in 6.1s (next.js: 5.5s, application-code: 584ms)
+○ Compiling /api/auth/login ...
+ POST /api/auth/login 200 in 12.4s (next.js: 11.6s, application-code: 771ms)
+ GET / 200 in 4.2s (next.js: 2.7s, application-code: 1497ms)
+ GET /explore 200 in 1587ms (next.js: 1062ms, application-code: 525ms)
+ GET /how-it-works 200 in 534ms (next.js: 210ms, application-code: 325ms)
+ GET /platform 200 in 417ms (next.js: 101ms, application-code: 315ms)
+ GET /pricing 200 in 449ms (next.js: 88ms, application-code: 361ms)
+ GET /about 200 in 543ms (next.js: 131ms, application-code: 412ms)
+ GET /contact 200 in 298ms (next.js: 100ms, application-code: 198ms)
+ GET /privacy 200 in 354ms (next.js: 100ms, application-code: 254ms)
+ GET /terms 200 in 509ms (next.js: 91ms, application-code: 418ms)
+ GET /login 200 in 574ms (next.js: 403ms, application-code: 170ms)
+ GET /dashboard 200 in 1053ms (next.js: 278ms, proxy.ts: 492ms, application-code: 283ms)
+ GET /campaigns 200 in 615ms (next.js: 406ms, proxy.ts: 12ms, application-code: 197ms)
+ GET /research 200 in 654ms (next.js: 354ms, proxy.ts: 14ms, application-code: 285ms)
+ GET /settings 200 in 613ms (next.js: 423ms, proxy.ts: 9ms, application-code: 181ms)
+ GET /companies 200 in 184ms (next.js: 75ms, proxy.ts: 7ms, application-code: 102ms)
+ GET /workflows 200 in 210ms (next.js: 75ms, proxy.ts: 8ms, application-code: 127ms)
+ GET /opportunities 200 in 370ms (next.js: 254ms, proxy.ts: 6ms, application-code: 110ms)
+ GET /qualified-leads 200 in 259ms (next.js: 77ms, proxy.ts: 7ms, application-code: 175ms)
+ GET /scraper/control-center 200 in 1042ms (next.js: 83ms, proxy.ts: 10ms, application-code: 949ms)
+ GET /scraper/jobs 200 in 666ms (next.js: 94ms, proxy.ts: 11ms, application-code: 561ms)
+ GET /scraper/jobs/new 200 in 318ms (next.js: 96ms, proxy.ts: 7ms, application-code: 216ms)
+ GET /scraper/queue 200 in 1059ms (next.js: 72ms, proxy.ts: 8ms, application-code: 980ms)
+ GET /scraper/sources 200 in 354ms (next.js: 117ms, proxy.ts: 11ms, application-code: 226ms)
+ GET /scraper/logs 200 in 863ms (next.js: 87ms, proxy.ts: 7ms, application-code: 770ms)
+ GET /api/campaigns 200 in 662ms (next.js: 181ms, application-code: 482ms)
+ DELETE /api/campaigns/campaign-bristol-dental-practices-mtuq0869 200 in 2.3s (next.js: 1758ms, application-code: 587ms)
+ GET /api/campaigns 200 in 247ms (next.js: 3ms, application-code: 244ms)
+ POST /api/auth/login 200 in 283ms (next.js: 9ms, application-code: 274ms)
+ GET /dashboard 200 in 196ms (next.js: 20ms, proxy.ts: 12ms, application-code: 164ms)
+ GET /campaigns 200 in 161ms (next.js: 16ms, proxy.ts: 13ms, application-code: 133ms)
+ GET /settings 200 in 392ms (next.js: 32ms, proxy.ts: 10ms, application-code: 350ms)
+ GET /research 200 in 222ms (next.js: 13ms, proxy.ts: 8ms, application-code: 202ms)
+[?25h

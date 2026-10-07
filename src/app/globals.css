@@ -1,0 +1,69 @@
+/* Scan application source only.
+   Automatic source detection is disabled because this project is not a git
+   repository, so Tailwind has no .gitignore to honour and would otherwise scan
+   build artifacts under .next/ — producing invalid class candidates that fail
+   CSS parsing. Keep the path below in sync if the source directory moves. */
+@import "tailwindcss" source(none);
+@source "../../src";
+
+:root {
+  --font-display: var(--font-outfit);
+  --font-body: var(--font-inter);
+  --background: #f7f8fa;
+  --surface: #ffffff;
+  --surface-subtle: #f3f4f6;
+  --text-primary: #111318;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --text-disabled: #9ca3af;
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: #eff6ff;
+  --success: #16a34a;
+  --success-soft: #f0fdf4;
+  --warning: #d97706;
+  --warning-soft: #fffbeb;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --neutral: #64748b;
+  --neutral-soft: #f1f5f9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--background);
+  color: var(--text-primary);
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-family: var(--font-display), system-ui, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}

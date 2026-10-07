@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ejentic
+      POSTGRES_USER: ejentic
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ejentic-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ejentic -d ejentic"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - ejentic-redis:/data
+    command: ["redis-server", "--appendonly", "yes"]
+
+  # The dashboard and public site.
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://ejentic:${POSTGRES_PASSWORD:-change-me-local-only}@postgres:5432/ejentic?schema=public
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required in production}
+      NODE_ENV: production
+      # Empty BASE_PATH serves the app at "/". Set "/app" to mount it under the
+      # main ejentic.ai site - it is read at build time, so rebuild to change it.
+      BASE_PATH: ${BASE_PATH:-}
+      EJENTIC_ADMIN_EMAIL: ${EJENTIC_ADMIN_EMAIL:-}
+      EJENTIC_ADMIN_PASSWORD: ${EJENTIC_ADMIN_PASSWORD:-}
+
+  # Crawl worker. Scale with: docker compose up --scale worker=3
+  # Migrations run in `app`; the worker waits for it to be healthy so it never
+  # starts querying a schema that does not exist yet.
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://ejentic:${POSTGRES_PASSWORD:-change-me-local-only}@postgres:5432/ejentic?schema=public
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+    command: ["npm", "run", "worker"]
+
+volumes:
+  ejentic-postgres:
+  ejentic-redis:

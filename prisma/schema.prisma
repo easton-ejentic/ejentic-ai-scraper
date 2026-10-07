@@ -1,0 +1,336 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum JobStatus {
+  queued
+  running
+  paused
+  completed
+  failed
+  cancelled
+}
+
+enum TargetType {
+  campaign
+  url_list
+  domain
+  search
+}
+
+enum QueueStatus {
+  queued
+  processing
+  completed
+  failed
+}
+
+enum OpportunityStatus {
+  new
+  reviewing
+  qualified
+  outreach
+  won
+  lost
+}
+
+/// Human review state for a discovered workflow.
+enum WorkflowStatus {
+  discovered
+  reviewing
+  qualified
+  rejected
+}
+
+enum WorkerStatus {
+  idle
+  running
+  stopped
+}
+
+model Campaign {
+  id          String   @id
+  name        String
+  description String?
+  industry    String?
+  region      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  jobs         Job[]
+  companies    Company[]
+  workflows    Workflow[]
+  opportunities Opportunity[]
+
+  @@index([name])
+}
+
+model Job {
+  id                  String   @id
+  name                String
+  status              JobStatus
+  targetType          TargetType
+  targetLabel         String
+  totalUrls           Int      @default(0)
+  processedUrls       Int      @default(0)
+  successfulUrls      Int      @default(0)
+  queuedUrls          Int      @default(0)
+  workersActive       Int      @default(0)
+  workersTotal        Int      @default(1)
+  errorRate           Float    @default(0)
+  target              String?
+  campaignId          String?
+  sources             Json
+  configuration       Json
+  createdAt           DateTime @default(now())
+  startedAt           DateTime?
+  completedAt         DateTime?
+
+  campaign   Campaign?   @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  queueItems QueueItem[]
+  logs       ActivityLog[]
+  pages      CompanyPage[]
+  jobSources JobSource[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([campaignId])
+}
+
+/// Explicit source definitions attached to a job (websites, search, directories, social).
+model JobSource {
+  id        String   @id
+  jobId     String
+  kind      String
+  value     String
+  createdAt DateTime @default(now())
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+}
+
+/// Worker process registry used for health and heartbeats.
+model Worker {
+  id              String       @id
+  name            String
+  status          WorkerStatus @default(idle)
+  concurrency     Int          @default(1)
+  host            String?
+  jobsProcessed   Int          @default(0)
+  lastHeartbeatAt DateTime     @default(now())
+  startedAt       DateTime     @default(now())
+  stoppedAt       DateTime?
+
+  @@index([status])
+  @@index([lastHeartbeatAt])
+}
+
+model QueueItem {
+  id            String      @id
+  jobId         String
+  url           String
+  normalizedUrl String
+  status        QueueStatus @default(queued)
+  attempts      Int         @default(0)
+  depth         Int         @default(0)
+  discoveredAt  DateTime    @default(now())
+  processedAt   DateTime?
+  lastError     String?
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, normalizedUrl])
+  @@index([jobId, status, discoveredAt])
+}
+
+model ActivityLog {
+  id        String   @id
+  jobId     String
+  level     String
+  message   String
+  metadata  Json?
+  workerId  String?
+  createdAt DateTime @default(now())
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, createdAt])
+  @@index([level, createdAt])
+}
+
+model Company {
+  id          String   @id
+  name        String
+  domain      String   @unique
+  website     String
+  description String?
+  location    String?
+  email       String?
+  phone       String?
+  industry    String?
+  campaignId  String?
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+  pageCount   Int      @default(0)
+  jobIds      Json
+
+  campaign      Campaign?     @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  pages         CompanyPage[]
+  evidence      Evidence[]
+  workflows     Workflow[]
+  opportunities Opportunity[]
+
+  @@index([lastSeenAt])
+  @@index([campaignId])
+}
+
+model CompanyPage {
+  id          String   @id
+  companyId   String
+  jobId       String
+  url         String
+  title       String?
+  description String?
+  text        String
+  crawledAt   DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  job     Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, url])
+  @@index([jobId])
+}
+
+model Evidence {
+  id          String   @id
+  companyId   String
+  jobId       String
+  workflowId  String?
+  url         String
+  sourceTitle String?
+  label       String
+  type        String   @default("page")
+  excerpt     String
+  confidence  Float    @default(0.5)
+  createdAt   DateTime @default(now())
+
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  workflow Workflow? @relation(fields: [workflowId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@index([workflowId])
+  @@index([jobId])
+}
+
+model Workflow {
+  id          String         @id
+  companyId   String
+  companyName String
+  jobId       String
+  campaignId  String?
+  name        String
+  category    String
+  description String
+  confidence  Float
+  status      WorkflowStatus @default(discovered)
+  signals     Json
+  evidenceIds Json
+  sourceUrls  Json
+  firstSeenAt DateTime       @default(now())
+  lastSeenAt  DateTime       @default(now())
+  evaluation  Json?
+
+  campaign     Campaign?   @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  company      Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  evidence     Evidence[]
+  opportunity  Opportunity?
+
+  @@unique([companyId, name])
+  @@index([confidence])
+  @@index([companyId, lastSeenAt])
+  @@index([status])
+  @@index([campaignId])
+}
+
+model Opportunity {
+  id                  String            @id
+  workflowId          String            @unique
+  companyId           String
+  campaignId          String?
+  companyName         String
+  workflowName        String
+  title               String
+  summary             String
+  agentConcept        String
+  capabilities        Json
+  humanInvolvement    String
+  implementationNotes Json
+  risks               Json
+  assumptions         Json?
+  evidenceIds         Json
+  sourceUrls          Json
+  score               Float
+  confidence          Float
+  status              OpportunityStatus
+  qualificationReason String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  workflow Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([score])
+  @@index([status])
+  @@index([campaignId])
+}
+
+/// Marketing-site contact form submissions. Public visitors can create these;
+/// only authenticated staff can read or triage them.
+enum EnquiryStatus {
+  new
+  read
+  archived
+}
+
+model ContactEnquiry {
+  id        String        @id
+  name      String
+  email     String
+  company   String?
+  market    String?
+  interest  String?
+  message   String
+  status    EnquiryStatus @default(new)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+}
+
+enum UserRole {
+  ADMIN
+  OPERATOR
+  RESEARCHER
+  VIEWER
+}
+
+model User {
+  id            String    @id
+  email         String    @unique
+  name          String
+  role          UserRole  @default(VIEWER)
+  passwordHash  String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+
+  @@index([email])
+}
