@@ -8,10 +8,13 @@ import type {
   ContactEnquiryDraft,
   ContactEnquiryRecord,
   IRepository,
+  StoredEvidence,
   WorkerRecord,
 } from "./repository";
 import { prisma } from "./db";
-import type { JobDraft, ScraperJob } from "@/lib/scraper/job-types";
+import type { Job as PrismaJob } from "@prisma/client";
+import type { TargetType as PrismaTargetType } from "@prisma/client";
+import type { JobStatus, JobDraft, ScraperJob, TargetType } from "@/lib/scraper/job-types";
 import type { StoredQueueItem, StoredLog, QueueViewItem } from "@/lib/scraper/persistent-store";
 import type { CompanyRecord, CompanyPageRecord } from "@/lib/research/company";
 import type { WorkflowRecord } from "@/lib/research/workflow";
@@ -49,6 +52,25 @@ function jsonArray<T>(value: unknown): T[] {
   }
   return [];
 }
+
+/**
+ * The Prisma `TargetType` enum spells the URL-list variant `url_list`, while the
+ * domain type used everywhere else spells it `url-list`. These two maps are the
+ * only place that difference is reconciled, so a value round-trips unchanged.
+ */
+const PRISMA_TARGET_TYPE: Record<TargetType, PrismaTargetType> = {
+  campaign: "campaign",
+  "url-list": "url_list",
+  domain: "domain",
+  search: "search",
+};
+
+const DOMAIN_TARGET_TYPE: Record<PrismaTargetType, TargetType> = {
+  campaign: "campaign",
+  url_list: "url-list",
+  domain: "domain",
+  search: "search",
+};
 
 function jsonValue<T>(value: unknown): T | undefined {
   if (value === null || value === undefined) return undefined;
@@ -228,7 +250,7 @@ export class PostgreSQLRepository implements IRepository {
         name: draft.name,
         status: "running",
         campaignId: draft.campaignId?.trim() || null,
-        targetType: draft.targetType as any,
+        targetType: PRISMA_TARGET_TYPE[draft.targetType],
         targetLabel: this.generateTargetLabel(draft, queueUrls),
         totalUrls: draft.urlLimit,
         processedUrls: 0,
@@ -292,7 +314,7 @@ export class PostgreSQLRepository implements IRepository {
     };
 
     const rule = transitions[action];
-    if (!rule.from.includes(job.status as any)) return undefined;
+    if (!rule.from.includes(job.status)) return undefined;
 
     const now = new Date();
     const updated = await prisma.job.update({
@@ -357,7 +379,7 @@ export class PostgreSQLRepository implements IRepository {
       jobId: updated.jobId,
       url: updated.url,
       normalizedUrl: updated.normalizedUrl,
-      status: updated.status as any,
+      status: updated.status as StoredQueueItem["status"],
       attempts: updated.attempts,
       discoveredAt: updated.discoveredAt.toISOString(),
       processedAt: updated.processedAt?.toISOString(),
@@ -528,7 +550,10 @@ export class PostgreSQLRepository implements IRepository {
       jobName: jobMap.get(item.jobId)?.name ?? item.jobId,
       priority: 1,
       attempts: item.attempts,
-      status: (item.status === "queued" ? "pending" : item.status) as any,
+      status: (item.status === "queued" ? "pending" : item.status) as
+        | "pending"
+        | "processing"
+        | "failed",
       enqueuedAt: item.discoveredAt.toISOString(),
     }));
   }
@@ -567,7 +592,7 @@ export class PostgreSQLRepository implements IRepository {
         },
       });
     } else {
-      const jobIds = (JSON.parse(stored.jobIds as any) || []) as string[];
+      const jobIds = jsonArray<string>(stored.jobIds);
       if (!jobIds.includes(input.jobId)) jobIds.push(input.jobId);
 
       await prisma.company.update({
@@ -625,7 +650,7 @@ export class PostgreSQLRepository implements IRepository {
       evidenceIds: pageEvidence.map((item) => `${page.id}:${item.label}`),
     });
 
-    return stored as any;
+    return this.companyRowToDomain(stored);
   }
 
   /**
@@ -754,6 +779,40 @@ export class PostgreSQLRepository implements IRepository {
    * opportunity from an unscored workflow - without this, workflows written by
    * an older run would silently produce no opportunities at all.
    */
+  /**
+   * The Prisma `Company` row has no `pages` column - pages live in a separate
+   * table and are only loaded by callers that need them. Domain records require
+   * the array, so callers that have not fetched pages get an empty one rather
+   * than an `undefined` that would break `.length` / `.map()` downstream.
+   */
+  private companyRowToDomain(
+    row: {
+      id: string;
+      name: string;
+      domain: string;
+      website: string;
+      description: string | null;
+      pageCount: number;
+      jobIds: unknown;
+      firstSeenAt: Date | string;
+      lastSeenAt: Date | string;
+    },
+    pages: CompanyPageRecord[] = [],
+  ): CompanyRecord {
+    return {
+      id: row.id,
+      name: row.name,
+      domain: row.domain,
+      website: row.website,
+      description: row.description,
+      pageCount: row.pageCount,
+      jobIds: jsonArray<string>(row.jobIds),
+      firstSeenAt: iso(row.firstSeenAt),
+      lastSeenAt: iso(row.lastSeenAt),
+      pages,
+    };
+  }
+
   private workflowRowToDomain(row: {
     id: string;
     companyId: string;
@@ -879,10 +938,12 @@ export class PostgreSQLRepository implements IRepository {
     const companies = await prisma.company.findMany({
       orderBy: { lastSeenAt: "desc" },
     });
-    return companies as any;
+    return companies.map((row) => this.companyRowToDomain(row));
   }
 
-  async getStoredCompany(id: string): Promise<{ company: CompanyRecord; evidence: any[] } | undefined> {
+  async getStoredCompany(
+    id: string,
+  ): Promise<{ company: CompanyRecord; evidence: StoredEvidence[] } | undefined> {
     const company = await prisma.company.findUnique({ where: { id } });
     if (!company) return undefined;
 
@@ -892,7 +953,7 @@ export class PostgreSQLRepository implements IRepository {
       take: 100,
     });
 
-    return { company: company as any, evidence };
+    return { company: this.companyRowToDomain(company), evidence };
   }
 
   // ==================
@@ -907,7 +968,9 @@ export class PostgreSQLRepository implements IRepository {
     return workflows.map((row) => this.workflowRowToDomain(row));
   }
 
-  async getStoredWorkflow(id: string): Promise<{ workflow: WorkflowRecord; evidence: any[] } | undefined> {
+  async getStoredWorkflow(
+    id: string,
+  ): Promise<{ workflow: WorkflowRecord; evidence: StoredEvidence[] } | undefined> {
     const workflow = await prisma.workflow.findUnique({ where: { id } });
     if (!workflow) return undefined;
 
@@ -999,7 +1062,7 @@ export class PostgreSQLRepository implements IRepository {
 
   async getStoredOpportunity(id: string): Promise<OpportunityRecord | undefined> {
     const opportunity = await prisma.opportunity.findUnique({ where: { id } });
-    return (opportunity || undefined) as any;
+    return opportunity ? this.opportunityRowToDomain(opportunity) : undefined;
   }
 
   async updateOpportunityStatus(
@@ -1011,7 +1074,7 @@ export class PostgreSQLRepository implements IRepository {
       data: { status, updatedAt: new Date() },
     });
 
-    return updated as any;
+    return this.opportunityRowToDomain(updated);
   }
 
   // ==================
@@ -1158,11 +1221,11 @@ export class PostgreSQLRepository implements IRepository {
   // HELPERS
   // ==================
 
-  private jobToDomain(job: any): ScraperJob {
+  private jobToDomain(job: PrismaJob): ScraperJob {
     return {
       id: job.id,
       name: job.name,
-      status: job.status,
+      status: job.status as JobStatus,
       totalUrls: job.totalUrls,
       processedUrls: job.processedUrls,
       successfulUrls: job.successfulUrls,
@@ -1172,10 +1235,12 @@ export class PostgreSQLRepository implements IRepository {
       errorRate: job.errorRate,
       createdAt: job.createdAt.toISOString(),
       startedAt: job.startedAt?.toISOString(),
-      targetType: job.targetType,
+      targetType: DOMAIN_TARGET_TYPE[job.targetType],
       targetLabel: job.targetLabel,
-      sources: (JSON.parse(job.sources) || []) as string[],
-      configuration: JSON.parse(job.configuration),
+      sources: jsonArray<string>(job.sources),
+      configuration:
+        jsonValue<ScraperJob["configuration"]>(job.configuration) ??
+        { workers: 1, requestsPerSecond: 1, retries: 0, javascriptRendering: false },
     };
   }
 

@@ -68,6 +68,9 @@ const tables = {
   evidence: makeTable(),
   workflow: makeTable(),
   opportunity: makeTable(),
+  job: makeTable(),
+  queueItem: makeTable(),
+  activityLog: makeTable(),
 };
 
 function resetTables() {
@@ -75,6 +78,21 @@ function resetTables() {
 }
 
 const prismaMock = {
+  job: {
+    findFirst: async () => null,
+    create: async ({ data }: { data: Row }) => tables.job.create(data),
+    findMany: async () => [...tables.job.rows.values()],
+    findUnique: async ({ where }: { where: Row }) =>
+      tables.job.findUnique(String(where.id)) ?? null,
+    update: async ({ where, data }: { where: Row; data: Row }) =>
+      tables.job.update(String(where.id), data),
+  },
+  queueItem: {
+    upsert: async ({ create }: { create: Row }) => tables.queueItem.create(create),
+  },
+  activityLog: {
+    create: async ({ data }: { data: Row }) => tables.activityLog.create(data),
+  },
   company: {
     findFirst: async ({ where }: { where: Row }) =>
       tables.company.findFirst((row) => row.domain === where.domain) ?? null,
@@ -155,8 +173,8 @@ let repository: Repository;
 
 beforeEach(async () => {
   resetTables();
-  const module = await import("../src/lib/production/postgresql-repository");
-  repository = new module.PostgreSQLRepository();
+  const repositoryModule = await import("../src/lib/production/postgresql-repository");
+  repository = new repositoryModule.PostgreSQLRepository();
 });
 
 describe("PostgreSQL repository: discovery pipeline", () => {
@@ -241,5 +259,42 @@ describe("PostgreSQL repository: discovery pipeline", () => {
 
     const evaluated = await repository.evaluateStoredWorkflow(workflow!.id);
     expect(evaluated?.evaluation?.overallScore).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * The Prisma `TargetType` enum spells the URL-list variant `url_list`, while the
+ * domain type used everywhere else spells it `url-list`. Those two spellings
+ * must be reconciled in both directions, otherwise a "url-list" job is rejected
+ * by the enum on write and comes back as "url_list" on read - which no screen
+ * or worker branch recognises.
+ */
+describe("PostgreSQL repository: job target type mapping", () => {
+  const draft = {
+    name: "Bristol dentists",
+    targetType: "url-list" as const,
+    urlLimit: 10,
+    sources: { websites: true, search: false, directories: false, social: false },
+    configuration: { workers: 2, requestsPerSecond: 1, retries: 1, javascriptRendering: false },
+  };
+
+  it("writes the Prisma enum spelling and returns the domain spelling", async () => {
+    const created = await repository.createStoredJob(draft, ["https://example.com/"]);
+
+    expect(created.targetType).toBe("url-list");
+    expect(tables.job.rows.get(created.id)?.targetType).toBe("url_list");
+  });
+
+  it("round-trips every target type back out of the database", async () => {
+    for (const targetType of ["campaign", "url-list", "domain", "search"] as const) {
+      const created = await repository.createStoredJob(
+        { ...draft, targetType },
+        ["https://example.com/"],
+      );
+      expect(created.targetType).toBe(targetType);
+
+      const readBack = await repository.getStoredJob(created.id);
+      expect(readBack?.targetType).toBe(targetType);
+    }
   });
 });

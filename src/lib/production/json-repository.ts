@@ -7,6 +7,7 @@ import type {
   ContactEnquiryDraft,
   ContactEnquiryRecord,
   IRepository,
+  StoredEvidence,
   WorkerHeartbeat,
   WorkerRecord,
 } from "./repository";
@@ -105,11 +106,15 @@ export class JSONRepository implements IRepository {
   }
 
   async listStoredCompanies(): Promise<CompanyRecord[]> {
-    return persistentStore.listStoredCompanies() as any;
+    return persistentStore.listStoredCompanies() as CompanyRecord[];
   }
 
-  async getStoredCompany(id: string): Promise<{ company: CompanyRecord; evidence: any[] } | undefined> {
-    return persistentStore.getStoredCompany(id) as any;
+  async getStoredCompany(
+    id: string,
+  ): Promise<{ company: CompanyRecord; evidence: StoredEvidence[] } | undefined> {
+    return persistentStore.getStoredCompany(id) as
+      | { company: CompanyRecord; evidence: StoredEvidence[] }
+      | undefined;
   }
 
   // Workflows
@@ -117,8 +122,12 @@ export class JSONRepository implements IRepository {
     return persistentStore.listStoredWorkflows();
   }
 
-  async getStoredWorkflow(id: string): Promise<{ workflow: WorkflowRecord; evidence: any[] } | undefined> {
-    return persistentStore.getStoredWorkflow(id) as any;
+  async getStoredWorkflow(
+    id: string,
+  ): Promise<{ workflow: WorkflowRecord; evidence: StoredEvidence[] } | undefined> {
+    return persistentStore.getStoredWorkflow(id) as
+      | { workflow: WorkflowRecord; evidence: StoredEvidence[] }
+      | undefined;
   }
 
   async evaluateStoredWorkflow(id: string): Promise<WorkflowRecord | undefined> {

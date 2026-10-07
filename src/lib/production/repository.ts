@@ -18,6 +18,23 @@ import type {
 } from "@/lib/research/campaign";
 
 /**
+ * An evidence row as returned by `getStoredCompany` / `getStoredWorkflow`.
+ *
+ * The JSON store and the Prisma `Evidence` model keep slightly different
+ * fields, so this describes the subset both implementations guarantee.
+ * `createdAt` is an ISO string in the JSON store and a `Date` from Prisma.
+ */
+export interface StoredEvidence {
+  id: string;
+  companyId: string;
+  jobId: string;
+  url: string;
+  label: string;
+  excerpt: string;
+  createdAt: string | Date;
+}
+
+/**
  * Repository interface - all methods are async for database compatibility
  */
 export interface IRepository {
@@ -52,11 +69,11 @@ export interface IRepository {
     text: string;
   }): Promise<CompanyRecord | null>;
   listStoredCompanies(): Promise<CompanyRecord[]>;
-  getStoredCompany(id: string): Promise<{ company: CompanyRecord; evidence: any[] } | undefined>;
+  getStoredCompany(id: string): Promise<{ company: CompanyRecord; evidence: StoredEvidence[] } | undefined>;
 
   // Workflows
   listStoredWorkflows(): Promise<WorkflowRecord[]>;
-  getStoredWorkflow(id: string): Promise<{ workflow: WorkflowRecord; evidence: any[] } | undefined>;
+  getStoredWorkflow(id: string): Promise<{ workflow: WorkflowRecord; evidence: StoredEvidence[] } | undefined>;
   evaluateStoredWorkflow(id: string): Promise<WorkflowRecord | undefined>;
   evaluateAllStoredWorkflows(): Promise<WorkflowRecord[]>;
 

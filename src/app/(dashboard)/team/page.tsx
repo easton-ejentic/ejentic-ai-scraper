@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, ShieldAlert, Trash2, UserPlus } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,23 +42,30 @@ export default function TeamPage() {
   const [role, setRole] = useState<Role>("VIEWER");
   const [creating, setCreating] = useState(false);
 
-  const load = useCallback(async () => {
-    try {
-      const response = await fetch("/api/users");
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.error ?? "Could not load the team");
-      setMembers(body.users ?? []);
-      setError(null);
-    } catch (cause: unknown) {
-      setError(cause instanceof Error ? cause.message : "Could not load the team");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    void load();
-  }, [load]);
+    // `active` guards against a response landing after the user navigates away.
+    let active = true;
+
+    void (async () => {
+      try {
+        const response = await fetch("/api/users");
+        const body = await response.json();
+        if (!active) return;
+        if (!response.ok) throw new Error(body.error ?? "Could not load the team");
+        setMembers(body.users ?? []);
+        setError(null);
+      } catch (cause: unknown) {
+        if (!active) return;
+        setError(cause instanceof Error ? cause.message : "Could not load the team");
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const createMember = async () => {
     setCreating(true);
