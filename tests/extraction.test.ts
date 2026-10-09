@@ -52,7 +52,6 @@ describe("companyFromPage", () => {
     const company = companyFromPage(
       "https://www.northwind.example.com/about",
       "Northwind Logistics",
-      "Freight operator",
     );
     expect(company?.domain).toBe("northwind.example.com");
     expect(company?.website).toBe("https://www.northwind.example.com");
@@ -60,7 +59,7 @@ describe("companyFromPage", () => {
   });
 
   it("returns null for non-http urls", () => {
-    expect(companyFromPage("ftp://example.com", "X", null)).toBeNull();
+    expect(companyFromPage("ftp://example.com", "X")).toBeNull();
   });
 });
 
@@ -151,7 +150,7 @@ describe("error page titles", () => {
   });
 
   it("falls back to the domain instead of using an error title as the name", () => {
-    const company = companyFromPage("https://myemergencyplumber.co.uk", "403 Forbidden", null);
+    const company = companyFromPage("https://myemergencyplumber.co.uk", "403 Forbidden");
     expect(company?.name).toBe("Myemergencyplumber");
     expect(company?.domain).toBe("myemergencyplumber.co.uk");
   });

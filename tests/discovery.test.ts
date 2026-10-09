@@ -7,7 +7,6 @@ import {
   DuckDuckGoProvider,
 } from "../src/lib/discovery/providers/duckduckgo";
 import {
-  BingProvider,
   extractTargetUrl as extractBingTargetUrl,
   isChallengePage as isChallengePageFn,
   parseBingHtml,

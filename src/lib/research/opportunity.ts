@@ -1,4 +1,3 @@
-import type { WorkflowEvaluation } from "./evaluation";
 import type { WorkflowRecord } from "./workflow";
 
 export interface OpportunityRecord {

@@ -640,7 +640,7 @@ export function recordCompanyPage(input: {
   text: string;
 }) {
   const database = ensureDatabase();
-  const company = companyFromPage(input.url, input.title, input.description);
+  const company = companyFromPage(input.url, input.title);
   if (!company) return null;
   const now = new Date().toISOString();
   let stored = database.companies.find((item) => item.domain === company.domain);

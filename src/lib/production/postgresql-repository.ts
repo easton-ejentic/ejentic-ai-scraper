@@ -27,7 +27,6 @@ import {
   type CampaignSummary,
 } from "@/lib/research/campaign";
 import { companyFromPage, extractEvidence, isErrorPageTitle } from "@/lib/research/company";
-import { evaluateWorkflow } from "@/lib/research/evaluation";
 import { targetLabelFor } from "@/lib/scraper/resolve-target";
 import {
   deriveOpportunity,
@@ -362,7 +361,6 @@ export class PostgreSQLRepository implements IRepository {
     if (!item) return undefined;
 
     // Update item
-    const now = new Date();
     const updated = await prisma.queueItem.update({
       where: { id: item.id },
       data: { status: "processing", attempts: item.attempts + 1 },
@@ -570,7 +568,7 @@ export class PostgreSQLRepository implements IRepository {
     text: string;
   }): Promise<CompanyRecord | null> {
     const now = new Date();
-    const company = companyFromPage(input.url, input.title, input.description);
+    const company = companyFromPage(input.url, input.title);
     if (!company) return null;
 
     // Find or create company

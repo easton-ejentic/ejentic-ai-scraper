@@ -13,6 +13,18 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          // `const { pages, ...rest } = company` omits a key on purpose, so the
+          // discarded binding is not dead code.
+          ignoreRestSiblings: true,
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

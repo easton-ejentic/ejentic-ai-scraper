@@ -11,12 +11,6 @@ import type { BusinessDescriptor } from "./types";
 
 const MAX_QUERIES = 3;
 
-function parts(descriptor: BusinessDescriptor): string[] {
-  return [descriptor.niche, descriptor.category, descriptor.location]
-    .map((value) => value?.trim())
-    .filter((value): value is string => Boolean(value));
-}
-
 export function buildQueries(descriptor: BusinessDescriptor): string[] {
   const name = descriptor.name?.trim();
   const niche = descriptor.niche?.trim();

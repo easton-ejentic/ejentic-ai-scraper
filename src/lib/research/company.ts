@@ -40,7 +40,6 @@ export function isErrorPageTitle(title: string | null | undefined): boolean {
 export function companyFromPage(
   url: string,
   title: string | null,
-  description: string | null,
 ): { domain: string; website: string; name: string } | null {
   try {
     const parsed = new URL(url);

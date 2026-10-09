@@ -9,7 +9,7 @@ import { JSONRepository } from "./json-repository";
 import { PostgreSQLRepository } from "./postgresql-repository";
 import type { JobDraft, ScraperJob } from "@/lib/scraper/job-types";
 import type { StoredQueueItem, StoredLog, QueueViewItem } from "@/lib/scraper/persistent-store";
-import type { CompanyRecord, CompanyPageRecord } from "@/lib/research/company";
+import type { CompanyRecord } from "@/lib/research/company";
 import type { WorkflowRecord } from "@/lib/research/workflow";
 import type { OpportunityRecord } from "@/lib/research/opportunity";
 import type {
