@@ -8,7 +8,7 @@ The application is now fully functional with clean architecture supporting both 
 
 ### Core Functionality
 - ✓ Complete end-to-end pipeline: URL crawl → Company discovery → Workflow evaluation → Opportunity generation → Lead qualification
-- ✓ All 32 API and UI routes working correctly
+- ✓ All routes working correctly (27 API endpoints, 30 pages)
 - ✓ Repository abstraction layer for database-agnostic operations
 - ✓ Async/await patterns in all API routes
 - ✓ Production-ready error handling throughout
@@ -29,13 +29,15 @@ The application is now fully functional with clean architecture supporting both 
 - ✓ JSONRepository implementation (wraps persistent-store)
 - ✓ PostgreSQLRepository implementation (ready to use)
 - ✓ Data migration scripts (seed-from-json.mjs)
-- ✓ Database schema defined (8 tables with relationships)
+- ✓ Database schema defined (13 models with relationships)
 
 ### TypeScript & Build
 - ✓ Full TypeScript strict mode enabled
 - ✓ Zero build errors (Turbopack 7.4s compile time)
 - ✓ All dependencies up-to-date
 - ✓ Production build verified working
+- ✓ ESLint clean: 0 errors, 0 warnings (`npm run lint`)
+- ✓ Tracked in git (initialised 2026-10-07)
 
 ### Documentation
 - ✓ Implementation status guide (IMPLEMENTATION_STATUS.md)
@@ -85,13 +87,17 @@ The application is now fully functional with clean architecture supporting both 
    - [ ] Distributed tracing for multi-node deployments
 
 ### 5. **Testing Suite** (Estimated: 8-12 hours)
-   **Status**: No automated tests present
-   - [ ] Unit tests for core functions (heuristics, evaluation)
-   - [ ] Integration tests for API endpoints
+   **Status**: 171 automated tests passing (`npm test`); still no E2E or load tests
+   - [x] Unit tests for core functions (heuristics, evaluation)
+   - [x] Integration tests for API endpoints — the PostgreSQL repository is driven
+     end-to-end against an in-memory Prisma stand-in (`tests/postgresql-pipeline.test.ts`)
    - [ ] End-to-end tests for full pipeline
    - [ ] Database migration tests
    - [ ] Worker/queue processing tests
    - [ ] Load tests for concurrent job processing
+
+   Coverage at a glance: discovery, extraction, evaluation, URL handling, queue
+   limits, campaigns, auth/sessions, site config, safety/SSRF, PostgreSQL pipeline.
 
 ### 6. **Deployment Automation** (Estimated: 4-8 hours)
    **Status**: Manual deployment only

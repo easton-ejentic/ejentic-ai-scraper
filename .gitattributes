@@ -1,0 +1,3 @@
+# Normalise line endings on check-in. Without this every commit on Windows
+# prints a wall of "LF will be replaced by CRLF" warnings.
+* text=auto
