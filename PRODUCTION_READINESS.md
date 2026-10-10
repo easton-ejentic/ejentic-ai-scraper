@@ -92,18 +92,25 @@ The application is now fully functional with clean architecture supporting both 
    - [x] Integration tests for API endpoints — the PostgreSQL repository is driven
      end-to-end against an in-memory Prisma stand-in (`tests/postgresql-pipeline.test.ts`)
    - [ ] End-to-end tests for full pipeline
-   - [ ] Database migration tests
+   - [x] Database migration tests — CI applies every migration against a real
+     PostgreSQL 17 service and runs `prisma migrate status`
    - [ ] Worker/queue processing tests
    - [ ] Load tests for concurrent job processing
 
    Coverage at a glance: discovery, extraction, evaluation, URL handling, queue
    limits, campaigns, auth/sessions, site config, safety/SSRF, PostgreSQL pipeline.
 
+   CI (`.github/workflows/ci.yml`) runs on push/PR to `main`: typecheck, lint,
+   test, build — plus a separate `migrate` job against a real Postgres service.
+   Nothing in the suite touches the network.
+
 ### 6. **Deployment Automation** (Estimated: 4-8 hours)
-   **Status**: Manual deployment only
-   - [ ] Docker container build and registry
+   **Status**: Verification CI exists; deployment itself is still manual
+   - [ ] Docker container build and registry — `Dockerfile` and `docker-compose.yml`
+     exist for local Postgres/Redis, but no image is published to a registry
    - [ ] Kubernetes manifests (if using K8s)
-   - [ ] CI/CD pipeline (GitHub Actions, GitLab CI, etc.)
+   - [~] CI/CD pipeline (GitHub Actions, GitLab CI, etc.) — **CI** covers
+     typecheck / lint / test / build / migrations; **CD** (deploy, rollback) does not exist
    - [ ] Automated testing in CI
    - [ ] Blue-green or canary deployment strategy
    - [ ] Rollback procedures
