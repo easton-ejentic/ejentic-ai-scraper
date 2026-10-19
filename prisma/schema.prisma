@@ -185,6 +185,7 @@ model Company {
   evidence      Evidence[]
   workflows     Workflow[]
   opportunities Opportunity[]
+  contacts      Contact[]
 
   @@index([lastSeenAt])
   @@index([campaignId])
@@ -313,6 +314,54 @@ model ContactEnquiry {
 
   @@index([status, createdAt])
   @@index([createdAt])
+}
+
+/// Whether an address looks like a named individual or a shared mailbox.
+enum ContactKind {
+  personal
+  role
+  generic
+  unknown
+}
+
+/// Result of the DNS-level deliverability check. Deliberately not SMTP:
+/// probing mail servers with RCPT TO is unreliable (catch-all servers accept
+/// everything) and gets crawlers banned.
+enum ContactVerification {
+  unverified
+  invalid
+  disposable
+  mx_missing
+  mx_valid
+}
+
+/// A discovered way to reach a human at a company.
+///
+/// A qualified lead is worthless if nobody can contact it, so contacts are
+/// first-class records: extracted from crawled page text, verified, and kept
+/// with the evidence URL they came from so every address can be audited.
+model Contact {
+  id            String              @id
+  companyId     String
+  email         String
+  kind          ContactKind         @default(unknown)
+  confidence    Float               @default(0.5)
+  sourceUrl     String
+  context       String?
+  firstName     String?
+  lastName      String?
+  verification  ContactVerification @default(unverified)
+  mxRecord      String?
+  verifiedAt    DateTime?
+  discoveredAt  DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, email])
+  @@index([companyId])
+  @@index([verification])
+  @@index([kind])
 }
 
 enum UserRole {

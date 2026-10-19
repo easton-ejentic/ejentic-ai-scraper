@@ -4,7 +4,7 @@
  * Can work with both Prisma/PostgreSQL and development JSON fallback
  */
 
-import { productionConfig } from "./config";
+import { persistenceMode, productionConfig } from "./config";
 import { JSONRepository } from "./json-repository";
 import { PostgreSQLRepository } from "./postgresql-repository";
 import type { JobDraft, ScraperJob } from "@/lib/scraper/job-types";
@@ -140,18 +140,25 @@ export interface WorkerHeartbeat {
 }
 
 /**
- * Get the appropriate repository implementation based on environment
+ * Get the appropriate repository implementation based on environment.
+ *
+ * Production has no JSON fallback. The file store is written by the web
+ * process and the worker at the same time with no locking, so running it in
+ * production silently loses whichever writer commits second. Failing here
+ * turns that into a startup/request error naming the fix, instead of data
+ * that quietly disappears.
  */
 export function getRepository(): IRepository {
-  const config = productionConfig();
+  const mode = persistenceMode();
 
-  if (config.databaseUrlConfigured) {
-    // Use PostgreSQL implementation
-    return new PostgreSQLRepository();
-  } else {
-    // Use JSON implementation (development)
-    return new JSONRepository();
-  }
+  if (mode === "postgresql") return new PostgreSQLRepository();
+  if (mode === "json") return new JSONRepository();
+
+  throw new Error(
+    "No durable storage configured. Set DATABASE_URL to a PostgreSQL " +
+      "connection string before running in production (NODE_ENV=production). " +
+      "The .data/scraper.json file store is development-only.",
+  );
 }
 
 /**

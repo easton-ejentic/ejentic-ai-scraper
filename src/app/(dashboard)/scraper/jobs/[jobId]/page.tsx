@@ -3,6 +3,9 @@ import { JobDetail } from "@/components/scraper/job-detail";
 import { getRepository } from "@/lib/production/repository";
 import { toActivityEvents } from "@/lib/scraper/activity";
 
+// Reads live job state, so it must never be prerendered at build time.
+export const dynamic = "force-dynamic";
+
 // Workers and events are read from the repository now. They used to come from
 // `mock-data`, so this screen reported three invented workers and a fixed list
 // of events regardless of what the crawl was actually doing.

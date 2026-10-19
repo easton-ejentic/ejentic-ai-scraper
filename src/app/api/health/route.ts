@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { productionConfig } from "@/lib/production/config";
+import { persistenceMode, productionConfig } from "@/lib/production/config";
 import { isProductionMode } from "@/lib/production/repository";
 import { getQueueStats, isExternalQueue, queueFallbackReason } from "@/lib/production/queue";
 import { authStatus } from "@/lib/auth/users";
@@ -21,14 +21,23 @@ export async function GET() {
   const dataPath = join(process.cwd(), ".data", "scraper.json");
 
   const checks: Record<string, { status: "ok" | "degraded" | "unavailable" | "unconfigured"; detail?: string }> = {
-    database: isProductionMode()
-      ? { status: "ok", detail: "postgresql via prisma" }
-      : {
-          status: "degraded",
+    database: (() => {
+      const mode = persistenceMode();
+      if (mode === "postgresql") return { status: "ok" as const, detail: "postgresql via prisma" };
+      if (mode === "json") {
+        return {
+          status: "degraded" as const,
           detail: existsSync(dataPath)
             ? "DATABASE_URL not set - using local JSON file (.data/scraper.json)"
             : "DATABASE_URL not set - local JSON file not created yet",
-        },
+        };
+      }
+      return {
+        status: "unavailable" as const,
+        detail:
+          "DATABASE_URL is required in production - data writes will fail until it is set",
+      };
+    })(),
     queue: isExternalQueue()
       ? { status: "ok", detail: "redis / bullmq" }
       : { status: "degraded", detail: queueFallbackReason() ?? "durable local file queue" },
@@ -57,9 +66,10 @@ export async function GET() {
   }
 
   const degraded = Object.values(checks).some((check) => check.status === "degraded");
+  const unavailable = Object.values(checks).some((check) => check.status === "unavailable");
 
   return NextResponse.json({
-    status: degraded ? "degraded" : "ok",
+    status: unavailable ? "error" : degraded ? "degraded" : "ok",
     service: "ejentic-ai-scraper",
     version: "0.1.0",
     mode: isProductionMode() ? "production" : "development",

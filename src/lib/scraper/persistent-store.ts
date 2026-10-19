@@ -79,6 +79,29 @@ interface DatabaseFile {
   campaigns: CampaignRecord[];
   workers: StoredWorker[];
   enquiries: StoredEnquiry[];
+  contacts: StoredContact[];
+}
+
+/**
+ * A discovered way to reach a person at a company, plus the result of the
+ * deliverability check. Kept with the URL it was extracted from so any address
+ * can be traced back to the page that produced it.
+ */
+export interface StoredContact {
+  id: string;
+  companyId: string;
+  email: string;
+  kind: "personal" | "role" | "generic" | "unknown";
+  confidence: number;
+  sourceUrl: string;
+  context: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  verification: "unverified" | "invalid" | "disposable" | "mx_missing" | "mx_valid";
+  mxRecord: string | null;
+  verifiedAt: string | null;
+  discoveredAt: string;
+  updatedAt: string;
 }
 
 /**
@@ -119,6 +142,7 @@ function ensureDatabase(): DatabaseFile {
       campaigns: [],
       workers: [],
       enquiries: [],
+      contacts: [],
     };
 
     writeFileSync(dataPath, JSON.stringify(initial, null, 2));
@@ -132,6 +156,7 @@ function ensureDatabase(): DatabaseFile {
   database.campaigns ??= [];
   database.workers ??= [];
   database.enquiries ??= [];
+  database.contacts ??= [];
   database.jobs ??= [];
   database.queue ??= [];
   database.logs ??= [];
@@ -223,6 +248,7 @@ function readDatabaseFile(): Partial<DatabaseFile> {
     campaigns: [],
     workers: [],
     enquiries: [],
+    contacts: [],
   };
 }
 
@@ -1026,4 +1052,67 @@ export function updateStoredEnquiryStatus(
   enquiry.updatedAt = new Date().toISOString();
   saveDatabase(database);
   return clone(enquiry);
+}
+
+/* -------------------------------------------------------------------------
+ * Discovered contacts
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Persist discovered contacts for a company.
+ *
+ * Upserts on (companyId, email) so re-running discovery after a recrawl
+ * refreshes verification data instead of piling up duplicates.
+ */
+export function saveStoredContacts(
+  companyId: string,
+  contacts: Array<Omit<StoredContact, "id" | "companyId" | "discoveredAt" | "updatedAt">>,
+): StoredContact[] {
+  const database = ensureDatabase();
+  const now = new Date().toISOString();
+  const saved: StoredContact[] = [];
+
+  for (const contact of contacts) {
+    const existing = database.contacts.find(
+      (item) => item.companyId === companyId && item.email === contact.email,
+    );
+
+    if (existing) {
+      Object.assign(existing, contact, { updatedAt: now });
+      saved.push(existing);
+      continue;
+    }
+
+    const created: StoredContact = {
+      ...contact,
+      id: randomUUID(),
+      companyId,
+      discoveredAt: now,
+      updatedAt: now,
+    };
+    database.contacts.unshift(created);
+    saved.push(created);
+  }
+
+  saveDatabase(database);
+  return clone(saved);
+}
+
+export function listStoredContacts(companyId?: string): StoredContact[] {
+  const contacts = ensureDatabase().contacts.filter(
+    (item) => !companyId || item.companyId === companyId,
+  );
+  return clone(contacts).sort(
+    (a, b) => b.confidence - a.confidence || a.email.localeCompare(b.email),
+  );
+}
+
+export function deleteStoredContact(id: string): boolean {
+  const database = ensureDatabase();
+  const index = database.contacts.findIndex((item) => item.id === id);
+  if (index === -1) return false;
+
+  database.contacts.splice(index, 1);
+  saveDatabase(database);
+  return true;
 }
