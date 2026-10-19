@@ -23,7 +23,6 @@ main site. See [docs/INTEGRATING_WITH_MAIN_SITE.md](docs/INTEGRATING_WITH_MAIN_S
 
 ```bash
 npm install --legacy-peer-deps
-cp .env.example .env.local     # optional for local dev
 npm run dev                    # app on http://localhost:3000
 ```
 
@@ -35,6 +34,13 @@ npm run worker
 
 That's it for local use. The app runs on a local JSON file (`.data/scraper.json`) and a
 durable file-backed queue; no database or Redis is required to try it.
+
+> **Don't blindly copy `.env.example` to `.env.local`.** That template ships a
+> real-looking `DATABASE_URL`, and the app picks its backend purely from whether
+> that variable is set. Copy it without a running PostgreSQL and every page that
+> touches data will throw instead of degrading. Start with **no** `.env.local`
+> (JSON mode), and only add `DATABASE_URL` once Postgres is actually up — then
+> see [Production](#production).
 
 > **Run only one worker at a time in development.** The JSON store has no
 > transactions, so two workers reading and rewriting the same file lose each

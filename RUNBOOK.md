@@ -155,11 +155,24 @@ The backend is auto-selected from the environment:
 docker compose up -d                 # PostgreSQL 17 + Redis 8
 # set DATABASE_URL and REDIS_URL in .env.local
 npx prisma migrate deploy
-npm run db:seed                      # REQUIRED — auth is always on with DATABASE_URL
+npm run db:admin                     # REQUIRED — creates the first login account
 npm run dev && npm run worker
 ```
 
 To run several workers in parallel you must set `DATABASE_URL` and `REDIS_URL`.
+
+> **`db:admin`, not `db:seed`.** Setting `DATABASE_URL` turns auth on
+> unconditionally (`authConfigured()` in `src/proxy.ts`), so the dashboard is
+> locked from the first request — but only `db:admin` creates an account:
+>
+> ```bash
+> DATABASE_URL=... ADMIN_EMAIL=you@company.com ADMIN_PASSWORD=... npm run db:admin
+> ```
+>
+> `npm run db:seed` is a **data** migration: it copies an existing
+> `.data/scraper.json` into Postgres. It creates no users, and on a fresh clone
+> (where `.data/` is gitignored) it has nothing to read and exits with an error.
+> Run it only if you are carrying over existing dev data.
 
 ---
 
